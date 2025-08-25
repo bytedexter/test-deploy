@@ -1,0 +1,19 @@
+version: 1
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - echo "Starting Docker build process"
+        build:
+          commands:
+            - echo "Building Docker image"
+            - docker build -t fastapi-hello-world .
+        postBuild:
+          commands:
+            - echo "Build completed"
+      artifacts:
+        baseDirectory: /
+        files:
+          - "**/*"
+    appRoot: /
