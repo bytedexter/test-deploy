@@ -1,12 +1,14 @@
-# FastAPI Hello World - AWS Amplify Deployment
+# FastAPI Hello World - AWS Deployment Guide
 
-This project contains a simple FastAPI Hello World application configured for deployment on AWS Amplify using Docker.
+This project contains a FastAPI Hello World application with multiple deployment options for AWS.
 
 ## Project Structure
 
 ```
 test-deploy/
-├── main.py              # FastAPI application
+├── main.py              # FastAPI application (original)
+├── app.py              # FastAPI with Lambda support (Mangum)
+├── index.html          # Static landing page for Amplify
 ├── requirements.txt     # Python dependencies
 ├── Dockerfile          # Docker configuration
 ├── docker-compose.yml  # Local development setup
@@ -15,108 +17,127 @@ test-deploy/
 └── README.md           # This file
 ```
 
+## Important Note About AWS Amplify
+
+**AWS Amplify is primarily designed for static websites and frontend applications.** While it can host your FastAPI code as files, it cannot run the Python server directly. 
+
+For a working FastAPI backend, you have several AWS deployment options:
+
+### Option 1: AWS Lambda + API Gateway (Recommended for FastAPI)
+
+1. **Use the `app.py` file** which includes Mangum for Lambda compatibility
+2. **Deploy using AWS SAM or Serverless Framework:**
+
+```bash
+# Install AWS SAM CLI
+# Then create a SAM template or use Serverless Framework
+pip install mangum
+```
+
+3. **Alternative: Use Zappa for easy Lambda deployment:**
+```bash
+pip install zappa
+zappa init
+zappa deploy dev
+```
+
+### Option 2: AWS App Runner (Easiest for Docker)
+
+1. **Push your Docker image to ECR:**
+```bash
+aws ecr create-repository --repository-name fastapi-hello-world
+docker build -t fastapi-hello-world .
+docker tag fastapi-hello-world:latest <your-account>.dkr.ecr.us-east-1.amazonaws.com/fastapi-hello-world:latest
+docker push <your-account>.dkr.ecr.us-east-1.amazonaws.com/fastapi-hello-world:latest
+```
+
+2. **Create App Runner service** in AWS Console pointing to your ECR image
+
+### Option 3: AWS ECS with Fargate
+
+1. **Use the provided Dockerfile**
+2. **Create ECS cluster and service**
+3. **Deploy using AWS Console or CLI**
+
+### Option 4: AWS EC2
+
+1. **Launch EC2 instance**
+2. **Install Docker or Python**
+3. **Run your application**
+
+## What AWS Amplify Will Do
+
+AWS Amplify will:
+- ✅ Host the `index.html` as a static landing page
+- ✅ Serve your FastAPI code files for download/reference
+- ❌ **NOT run the Python FastAPI server**
+
+The deployed Amplify site will show a landing page explaining the FastAPI project and provide links to the source code.
+
 ## Local Development
 
-### Prerequisites
-- Python 3.11+
-- Docker
-- Docker Compose
+### Running with Python
 
-### Running Locally with Python
-
-1. Install dependencies:
 ```bash
 pip install -r requirements.txt
-```
-
-2. Run the application:
-```bash
 python main.py
+# Visit http://localhost:8000
 ```
 
-3. Visit `http://localhost:8000` to see the Hello World page
-4. Visit `http://localhost:8000/api/hello` for the JSON API response
-5. Visit `http://localhost:8000/docs` for the interactive API documentation
+### Running with Docker
 
-### Running Locally with Docker
-
-1. Build and run with Docker Compose:
 ```bash
 docker-compose up --build
+# Visit http://localhost:8000
 ```
 
-2. Visit `http://localhost:8000` to see the application
+## AWS Amplify Deployment (Static Site)
 
-### Running with Docker only
+### Step 1: Commit and Push
 
-1. Build the Docker image:
-```bash
-docker build -t fastapi-hello-world .
-```
-
-2. Run the container:
-```bash
-docker run -p 8000:8000 fastapi-hello-world
-```
-
-## AWS Amplify Deployment Steps
-
-### Step 1: Prepare Your Repository
-
-1. Make sure all files are committed to your Git repository:
 ```bash
 git add .
-git commit -m "Add FastAPI Hello World with Docker configuration"
+git commit -m "Add FastAPI project with static landing page"
 git push origin main
 ```
 
-### Step 2: Set Up AWS Amplify
+### Step 2: Deploy to Amplify
 
-1. **Log in to AWS Console**
-   - Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
-   - Sign in with your AWS credentials
+1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
+2. Create new app → Host web app
+3. Connect your repository
+4. Deploy
 
-2. **Create New App**
-   - Click "Create new app"
-   - Choose "Host web app"
+**Result:** You'll get a static website with a landing page explaining your FastAPI project.
 
-3. **Connect Repository**
-   - Select your Git provider (GitHub, GitLab, Bitbucket, etc.)
-   - Authorize AWS Amplify to access your repositories
-   - Select this repository (`test-deploy`)
-   - Choose the `main` branch
+## Recommended Next Steps for Production FastAPI
 
-### Step 3: Configure Build Settings
+### For Serverless (Lambda):
 
-1. **Build Settings**
-   - Amplify should automatically detect the `amplify.yml` file
-   - If not, you can manually configure:
-     - Build command: `docker build -t fastapi-hello-world .`
-     - Output directory: Leave empty or set to `/`
+1. **Update your FastAPI app for Lambda:**
+   - Use the `app.py` file (includes Mangum)
+   - Deploy with AWS SAM, Serverless Framework, or Zappa
 
-2. **Environment Variables** (if needed)
-   - Add any environment variables your app might need
-   - For this simple Hello World app, none are required
+2. **Example with Zappa:**
+```bash
+pip install zappa
+zappa init
+zappa deploy production
+```
 
-### Step 4: Deploy
+### For Containerized (App Runner/ECS):
 
-1. **Review and Deploy**
-   - Review your settings
-   - Click "Save and deploy"
-   - Wait for the build and deployment to complete
+1. **Push to ECR:**
+```bash
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account>.dkr.ecr.us-east-1.amazonaws.com
+docker build -t fastapi-hello-world .
+docker tag fastapi-hello-world:latest <account>.dkr.ecr.us-east-1.amazonaws.com/fastapi-hello-world:latest
+docker push <account>.dkr.ecr.us-east-1.amazonaws.com/fastapi-hello-world:latest
+```
 
-2. **Access Your App**
-   - Once deployed, AWS Amplify will provide a URL
-   - Visit the URL to see your FastAPI Hello World application
+2. **Create App Runner service** pointing to your ECR image
 
-### Step 5: Custom Domain (Optional)
-
-1. **Add Custom Domain**
-   - In the Amplify console, go to "Domain management"
-   - Add your custom domain
-   - Follow the DNS configuration instructions
-
-## API Endpoints
+## API Endpoints (When Deployed Properly)
 
 - `GET /` - HTML Hello World page
 - `GET /api/hello` - JSON API response
@@ -124,28 +145,19 @@ git push origin main
 - `GET /docs` - Interactive API documentation (Swagger UI)
 - `GET /redoc` - Alternative API documentation
 
-## Important Notes for AWS Amplify Deployment
-
-1. **Docker Support**: AWS Amplify supports Docker, but the configuration might need adjustments based on your specific requirements.
-
-2. **Port Configuration**: The application is configured to run on port 8000, which is exposed in the Dockerfile.
-
-3. **Build Process**: The `amplify.yml` file defines the build process. You may need to adjust it based on your specific deployment needs.
-
-4. **Environment Variables**: For production deployments, consider using AWS Amplify's environment variable management for sensitive configuration.
-
-5. **Monitoring**: Once deployed, you can monitor your application through the AWS Amplify console and CloudWatch logs.
-
 ## Troubleshooting
 
-- **Build Failures**: Check the build logs in the AWS Amplify console
-- **Port Issues**: Ensure the application is binding to `0.0.0.0:8000`
-- **Docker Issues**: Verify the Dockerfile works locally before deploying
+- **"Illegal path found for appRoot"** - Fixed in this version
+- **FastAPI not running on Amplify** - Expected behavior; use Lambda/App Runner instead
+- **Local Docker issues** - Ensure Docker is running and ports are available
 
-## Next Steps
+## Summary
 
-- Add a database (PostgreSQL, MongoDB, etc.)
-- Implement authentication
-- Add more API endpoints
-- Set up CI/CD pipelines
-- Add monitoring and logging
+This repository provides:
+1. ✅ **Working FastAPI application** (runs locally)
+2. ✅ **Docker configuration** (for local development and ECS/App Runner deployment)
+3. ✅ **Lambda-ready version** (`app.py` with Mangum)
+4. ✅ **Static landing page** (for AWS Amplify)
+5. ✅ **Multiple deployment options** documented above
+
+Choose the deployment method that best fits your needs!
